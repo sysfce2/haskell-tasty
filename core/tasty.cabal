@@ -27,6 +27,11 @@ flag unix
     Depend on the unix package to install signal handlers
   default: True
 
+flag terminal-size
+  description:
+    Depend on the terminal-size package to get terminal size
+  default: True
+
 library
   exposed-modules:
     Test.Tasty
@@ -66,6 +71,10 @@ library
     tagged               >= 0.5  && < 0.9,
     optparse-applicative >= 0.14 && < 0.20,
     ansi-terminal        >= 0.9  && < 1.2
+
+  if flag(terminal-size) && !arch(wasm32)
+    build-depends:
+      terminal-size >= 0.3 && < 0.4
 
   -- No reason to depend on unbounded-delays on 64-bit architecture
   if(!arch(x86_64) && !arch(aarch64) && !arch(ppc64le) && !arch(ppc64) && !arch(s390x) && !arch(riscv64) && !arch(loongarch64))

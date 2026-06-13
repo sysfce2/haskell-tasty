@@ -68,6 +68,10 @@ import Data.Foldable (foldMap)
 #endif
 import System.IO.Unsafe
 
+#if defined(MIN_VERSION_terminal_size)
+import qualified System.Console.Terminal.Size as TermSize
+#endif
+
 --------------------------------------------------
 -- TestOutput base definitions
 --------------------------------------------------
@@ -130,11 +134,19 @@ type Level = Int
 -- to avoid unsafePerformIO.
 -- (We cannot add another argument to 'buildTestOutput'
 -- in the middle of tasty-1.5 series, because it is exported)
-terminalWidth :: Maybe Int
-terminalWidth = unsafePerformIO $ do
-  isTerminalStdin <- hIsTerminalDevice stdin
-  if isTerminalStdin
-  then fmap (fmap snd) getTerminalSize
+terminalWidth :: Bool -> Maybe Int
+terminalWidth isTermWithTricks = unsafePerformIO $ do
+  if isTermWithTricks
+  then do
+    isTerminalStdin <- hIsTerminalDevice stdin
+    if isTerminalStdin
+    then
+#if defined(MIN_VERSION_terminal_size)
+      fmap (fmap TermSize.width) TermSize.size
+#else
+      fmap (fmap snd) getTerminalSize
+#endif
+    else pure Nothing
   else pure Nothing
 {-# NOINLINE terminalWidth #-}
 
@@ -155,7 +167,8 @@ buildTestOutput opts tree =
   let
     -- Do not retain the reference to the tree more than necessary
     !rawAlignment = computeAlignment opts tree
-    !alignment = case terminalWidth of
+    !(AnsiTricks isTermWithTricks) = lookupOption opts
+    !alignment = case terminalWidth isTermWithTricks of
       Nothing -> rawAlignment
       Just width -> min (width - approxMaxResultShortDescriptionWidth) rawAlignment
 
